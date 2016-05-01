@@ -27,7 +27,7 @@ def get_zero_repairs(st_year,end_year):
 
 
 
-repair_train = pd.read_csv('data/RepairTrain.csv')
+repair_train = pd.read_csv('../data/RepairTrain.csv')
 repair_train['year_sale'],repair_train['month_sale'] = get_year_month(repair_train['year/month(sale)'])
 repair_train['year_repair'],repair_train['month_repair'] = get_year_month(repair_train['year/month(repair)'])
 repair_min_year = repair_train['year_repair'].min()
@@ -68,9 +68,9 @@ def predict(x,span,periods = pred_period):
     return pred
 
 
-output_target = pd.read_csv('data/Output_TargetID_Mapping.csv')
+output_target = pd.read_csv('../data/Output_TargetID_Mapping.csv')
 
-submission = pd.read_csv('data/SampleSubmission.csv')
+submission = pd.read_csv('../data/SampleSubmission.csv')
 
 print('predicting')
 for i in range(0,output_target.shape[0],pred_period):
