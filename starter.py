@@ -104,8 +104,12 @@ for i in range(0,output_target.shape[0],pred_period):
     x = years.astype(int).combine(months, func=lambda x, y: x + y)
     y = X.number_repair
 
-    f = curve_fit(curve_func, x, y, p0=(1,1e-6,1))
-    submission['target'][i:i+pred_period] = get_prediction(f[0], curve_func, pred_period)
+    try:
+        f = curve_fit(curve_func, x, y, p0=(1,1e-6,1))
+        submission['target'][i:i+pred_period] = get_prediction(f[0], curve_func, pred_period)
+    except:
+        pred = predict(X.number_repair, span=3)
+        submission['target'][i:i+pred_period] = pred
 
 submission.to_csv('beat_benchmark_1.csv',index=False)
 print('submission file created')
