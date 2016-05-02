@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
+import math
 from pandas.stats.moments import ewma
+from scipy.optimize import curve_fit
 
 
 def get_year_month(year_month):
@@ -67,6 +69,21 @@ def predict(x,span,periods = pred_period):
     pred[pred < 0] = 0
     return pred
 
+def get_prediction(func_params, func, prediction_count):
+    predictions = []
+
+    start = (5 * 12) + 1
+
+    for i in range (prediction_count):
+        y = func(start + i, *func_params)
+        predictions.append(y)
+
+    return predictions
+
+
+def curve_func(x, a, c, d):
+    return a*np.exp(-c*x) + d
+
 
 output_target = pd.read_csv('../data/Output_TargetID_Mapping.csv')
 
@@ -78,8 +95,13 @@ for i in range(0,output_target.shape[0],pred_period):
     category = output_target['component_category'][i]
     #print 'predicting for',module,category
     X = get_repair_complete(module,category).fillna(0)
-    pred = predict(X.number_repair, span=3)
-    submission['target'][i:i+pred_period] = pred
+    years = X.year.apply(lambda y: (y - 2005)*12)
+    months = X.month
+    x = years.astype(int).combine(months, func=lambda x, y: x + y)
+    y = X.number_repair
+
+    f = curve_fit(curve_func, x, y)
+    submission['target'][i:i+pred_period] = get_prediction(f, curve_func, pred_period)
 
 submission.to_csv('beat_benchmark_1.csv',index=False)
 print('submission file created')
