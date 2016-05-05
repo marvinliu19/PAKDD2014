@@ -6,6 +6,7 @@ from pandas.stats.moments import ewma
 from scipy.optimize import curve_fit
 
 from statsmodels.formula.api import ols
+from sklearn.linear_model import LinearRegression
 
 
 def get_year_month(year_month):
@@ -79,7 +80,6 @@ def get_prediction(func_params, func, prediction_count):
 
     for i in range (prediction_count):
         y = func(start + i, *func_params)
-        y = round(y)
 
         if y < 0: y = 0
 
@@ -99,6 +99,9 @@ def fit_linear(x, y, C=0):
     A = np.exp(A_log)
     return A, K
 
+def predictor(x, m, c):
+    return np.exp(m*x + c)
+
 
 output_target = pd.read_csv('../data/Output_TargetID_Mapping.csv')
 
@@ -108,21 +111,30 @@ print('predicting')
 for i in range(0,output_target.shape[0],pred_period):
     module = output_target['module_category'][i]
     category = output_target['component_category'][i]
-    X = get_repair_complete(module,category).fillna(0)[6:]
+    X = get_repair_complete(module,category).fillna(0)
     years = X.year.apply(lambda y: (y-2005)*12)
     months = X.month
-    x = years.astype(int).combine(months, func=lambda x, y: x + y)
+    x = years.astype(int).combine(months, func=lambda x, y: x + y)[:, np.newaxis]
     y = X.number_repair
+
+    lr = LinearRegression()
+    lr.fit(x, y.apply(np.log))
+
+    f = (lr.coef_[0], lr.intercept_)
+    print(f)
+
+    plt.plot(x,y, 'ko')
+    plt.show()
 
     #f = curve_fit(curve_func, x, y, p0=(1,1e-6, 1))
     # a, k = fit_linear(x, y)
     # f = (a, k, 0)
 
-    df = pd.DataFrame({'x':x, 'y':y})
-
-    f = ols('np.log(x) ~ y', df).fit()
-
-    print f.summary()
+    # df = pd.DataFrame({'x':x, 'y':y})
+    #
+    # f = ols('np.log(y) ~ x', df).fit()
+    #
+    # print(f.summary())
     # print f[0]
 
     # yy = []
@@ -138,7 +150,7 @@ for i in range(0,output_target.shape[0],pred_period):
     # plt.show()
     # raw_input()
 
-    submission['target'][i:i+pred_period] = get_prediction(f, curve_func, pred_period)
+    submission['target'][i:i+pred_period] = get_prediction(f, predictor, pred_period)
 
 submission.to_csv('beat_benchmark_2.csv',index=False)
 print('submission file created')
