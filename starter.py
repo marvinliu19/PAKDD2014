@@ -80,6 +80,7 @@ def get_prediction(func_params, func, prediction_count):
 
     for i in range (prediction_count):
         y = func(start + i, *func_params)
+        y = round(y)
 
         if y < 0: y = 0
 
@@ -111,7 +112,7 @@ print('predicting')
 for i in range(0,output_target.shape[0],pred_period):
     module = output_target['module_category'][i]
     category = output_target['component_category'][i]
-    X = get_repair_complete(module,category).fillna(0)
+    X = get_repair_complete(module,category).fillna(0).query('number_repair > 0')
     years = X.year.apply(lambda y: (y-2005)*12)
     months = X.month
     x = years.astype(int).combine(months, func=lambda x, y: x + y)[:, np.newaxis]
@@ -122,9 +123,6 @@ for i in range(0,output_target.shape[0],pred_period):
 
     f = (lr.coef_[0], lr.intercept_)
     print(f)
-
-    plt.plot(x,y, 'ko')
-    plt.show()
 
     #f = curve_fit(curve_func, x, y, p0=(1,1e-6, 1))
     # a, k = fit_linear(x, y)
