@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 from pandas.stats.moments import ewma
 from scipy.optimize import curve_fit
+
+from statsmodels.formula.api import ols
 
 
 def get_year_month(year_month):
@@ -72,7 +75,7 @@ def predict(x,span,periods = pred_period):
 def get_prediction(func_params, func, prediction_count):
     predictions = []
 
-    start = (2010 * 12)
+    start = (5 * 12)
 
     for i in range (prediction_count):
         y = func(start + i, *func_params)
@@ -88,6 +91,14 @@ def get_prediction(func_params, func, prediction_count):
 def curve_func(x, a, c, d):
     return a*np.exp(-c*x) + d
 
+def fit_linear(x, y, C=0):
+    y = y - C
+    y = np.log(y)
+
+    K, A_log = np.polyfit(x, y, 1)
+    A = np.exp(A_log)
+    return A, K
+
 
 output_target = pd.read_csv('../data/Output_TargetID_Mapping.csv')
 
@@ -97,19 +108,37 @@ print('predicting')
 for i in range(0,output_target.shape[0],pred_period):
     module = output_target['module_category'][i]
     category = output_target['component_category'][i]
-    #print 'predicting for',module,category
-    X = get_repair_complete(module,category).fillna(0)
-    years = X.year.apply(lambda y: y*12)
+    X = get_repair_complete(module,category).fillna(0)[6:]
+    years = X.year.apply(lambda y: (y-2005)*12)
     months = X.month
     x = years.astype(int).combine(months, func=lambda x, y: x + y)
     y = X.number_repair
 
-    try:
-        f = curve_fit(curve_func, x, y, p0=(1,1e-6,1))
-        submission['target'][i:i+pred_period] = get_prediction(f[0], curve_func, pred_period)
-    except:
-        pred = predict(X.number_repair, span=3)
-        submission['target'][i:i+pred_period] = pred
+    #f = curve_fit(curve_func, x, y, p0=(1,1e-6, 1))
+    # a, k = fit_linear(x, y)
+    # f = (a, k, 0)
 
-submission.to_csv('beat_benchmark_1.csv',index=False)
+    df = pd.DataFrame({'x':x, 'y':y})
+
+    f = ols('np.log(x) ~ y', df).fit()
+
+    print f.summary()
+    # print f[0]
+
+    # yy = []
+    # for xval in x:
+    #     ny = curve_func(xval, *f[0])
+    #     yy.append(ny)
+    #     print(xval, ny)
+
+    # print x
+    # print y
+    # plt.plot(x,y, 'ko')
+    # plt.plot(x,yy)
+    # plt.show()
+    # raw_input()
+
+    submission['target'][i:i+pred_period] = get_prediction(f, curve_func, pred_period)
+
+submission.to_csv('beat_benchmark_2.csv',index=False)
 print('submission file created')
