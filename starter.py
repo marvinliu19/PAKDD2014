@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from pandas.stats.moments import ewma
 from scipy.optimize import curve_fit
 
-from statsmodels.formula.api import ols
 from sklearn.linear_model import LinearRegression
 
 
@@ -42,8 +41,6 @@ repair_max_year = repair_train['year_repair'].max()
 cols_requ = ['module_category','component_category','year_repair','month_repair','number_repair']
 cols_groupby = ['module_category','component_category','year_repair','month_repair']
 repair_train_summ = repair_train[cols_requ].groupby(cols_groupby).sum()
-
-
 
 def get_repair_complete(module,component):
     zero_repair = get_zero_repairs(repair_min_year,repair_max_year)
@@ -101,29 +98,37 @@ def fit_linear(x, y, C=0):
     return A, K
 
 def predictor(x, m, c):
-    return np.exp(m*x + c)
+    return np.exp(m*x)
+
+def get_better_prediction(first_prediction, k, prediction_count):
+    result = [first_prediction]
+
+    for i in range(1, prediction_count):
+        result.append(result[-1] * k)
+
+    return result
 
 
 output_target = pd.read_csv('../data/Output_TargetID_Mapping.csv')
-
 submission = pd.read_csv('../data/SampleSubmission.csv')
 
-print('predicting')
+
 for i in range(0,output_target.shape[0],pred_period):
     module = output_target['module_category'][i]
     category = output_target['component_category'][i]
-    X = get_repair_complete(module,category).fillna(0)
-    years = X.year.apply(lambda y: (y-2005)*12)
-    months = X.month
+    X = get_repair_complete(module,category).fillna(0).query('year >= 2009 & month >= 5')
+    years = X.year.apply(lambda y: (y-2009)*12)
+    months = X.month.apply(lambda m: m - 5)
     x = years.astype(int).combine(months, func=lambda x, y: x + y)[:, np.newaxis]
     y = X.number_repair
 
     lr = LinearRegression()
-    lr.fit(x, y.apply(lambda y: np.log(y) if y > 0 else 0))
+    lr.fit(x, y.apply(lambda y: np.log(y + 1)))
 
-    f = (lr.coef_[0], lr.intercept_)
-    print(f)
-
+    k = lr.coef_[0] if lr.coef_[0] <= 0 else np.log(0.91)
+    k = np.exp(k)
+    first_prediction = y.iloc[-1]
+    print (first_prediction, k)
     #f = curve_fit(curve_func, x, y, p0=(1,1e-6, 1))
     # a, k = fit_linear(x, y)
     # f = (a, k, 0)
@@ -141,14 +146,15 @@ for i in range(0,output_target.shape[0],pred_period):
     #     yy.append(ny)
     #     print(xval, ny)
 
-    # print x
-    # print y
-    # plt.plot(x,y, 'ko')
-    # plt.plot(x,yy)
-    # plt.show()
-    # raw_input()
+    # yTransformed = y.apply(lambda y: np.log(y) if y > 0 else 0)
+    # linePoints = [xval*f[0] + f[1] for xval in x]
 
-    submission['target'][i:i+pred_period] = get_prediction(f, predictor, pred_period)
+    # plt.plot(x, yTransformed, 'ko')
+    # plt.plot(x, linePoints)
+
+    # plt.show()
+
+    submission['target'][i:i+pred_period] = get_better_prediction(first_prediction, k, pred_period)#get_prediction(f, predictor, pred_period)
 
 submission.to_csv('beat_benchmark_2.csv',index=False)
 print('submission file created')
