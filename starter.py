@@ -82,7 +82,7 @@ def get_prediction(func_params, func, prediction_count):
         y = func(start + i, *func_params)
         y = round(y)
 
-        if y < 0: y = 0
+        if y < 1: y = 0
 
         predictions.append(y)
 
@@ -112,14 +112,14 @@ print('predicting')
 for i in range(0,output_target.shape[0],pred_period):
     module = output_target['module_category'][i]
     category = output_target['component_category'][i]
-    X = get_repair_complete(module,category).fillna(0).query('number_repair > 0')
+    X = get_repair_complete(module,category).fillna(0)
     years = X.year.apply(lambda y: (y-2005)*12)
     months = X.month
     x = years.astype(int).combine(months, func=lambda x, y: x + y)[:, np.newaxis]
     y = X.number_repair
 
     lr = LinearRegression()
-    lr.fit(x, y.apply(np.log))
+    lr.fit(x, y.apply(lambda y: np.log(y) if y > 0 else 0))
 
     f = (lr.coef_[0], lr.intercept_)
     print(f)
