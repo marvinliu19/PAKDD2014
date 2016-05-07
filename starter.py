@@ -2,9 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 import itertools
-import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
-
 
 # Splits the year_month column into year and month and returns them as integers
 def get_year_month(year_month):
@@ -68,7 +66,6 @@ submission = pd.read_csv('../data/SampleSubmission.csv')
 # Number of predictions to make
 pred_period = 19
 
-c = 0
 # Make predictions for each module-component
 for i in range(0,output_target.shape[0],pred_period):
     module = output_target['module_category'][i]
@@ -97,15 +94,11 @@ for i in range(0,output_target.shape[0],pred_period):
     # Initial month (01/2010) prediction is same as previous month (12/2009)
     first_prediction = y.iloc[-1]
 
-    if c == 3:
-        plt.plot(x, y, 'ko')
-        plt.show()
-
     # Make predictions
     submission['target'][i:i+pred_period] = get_prediction(first_prediction, k, pred_period)
-    c += 1
 
-# submission.to_csv('submission.csv',index=False)
+# Write the output to submission.csv
+submission.to_csv('submission.csv',index=False)
 
 print 'submission.csv created.'
 
