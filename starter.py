@@ -61,46 +61,7 @@ def get_repair_complete(module,component):
 
 pred_period = 19
 
-def predict(x,span,periods = pred_period):
-    x_predict = np.zeros((span+periods,))
-    x_predict[:span] = x[-span:]
-    pred =  ewma(x_predict,span)[span:]
-
-    pred = pred.round()
-    pred[pred < 0] = 0
-    return pred
-
-def get_prediction(func_params, func, prediction_count):
-    predictions = []
-
-    start = (5 * 12)
-
-    for i in range (prediction_count):
-        y = func(start + i, *func_params)
-        y = round(y)
-
-        if y < 1: y = 0
-
-        predictions.append(y)
-
-    return predictions
-
-
-def curve_func(x, a, c, d):
-    return a*np.exp(-c*x) + d
-
-def fit_linear(x, y, C=0):
-    y = y - C
-    y = np.log(y)
-
-    K, A_log = np.polyfit(x, y, 1)
-    A = np.exp(A_log)
-    return A, K
-
-def predictor(x, m, c):
-    return np.exp(m*x)
-
-def get_better_prediction(first_prediction, k, prediction_count):
+def get_prediction(first_prediction, k, prediction_count):
     result = [first_prediction]
 
     for i in range(1, prediction_count):
@@ -129,32 +90,8 @@ for i in range(0,output_target.shape[0],pred_period):
     k = np.exp(k)
     first_prediction = y.iloc[-1]
     print (first_prediction, k)
-    #f = curve_fit(curve_func, x, y, p0=(1,1e-6, 1))
-    # a, k = fit_linear(x, y)
-    # f = (a, k, 0)
 
-    # df = pd.DataFrame({'x':x, 'y':y})
-    #
-    # f = ols('np.log(y) ~ x', df).fit()
-    #
-    # print(f.summary())
-    # print f[0]
-
-    # yy = []
-    # for xval in x:
-    #     ny = curve_func(xval, *f[0])
-    #     yy.append(ny)
-    #     print(xval, ny)
-
-    # yTransformed = y.apply(lambda y: np.log(y) if y > 0 else 0)
-    # linePoints = [xval*f[0] + f[1] for xval in x]
-
-    # plt.plot(x, yTransformed, 'ko')
-    # plt.plot(x, linePoints)
-
-    # plt.show()
-
-    submission['target'][i:i+pred_period] = get_better_prediction(first_prediction, k, pred_period)#get_prediction(f, predictor, pred_period)
+    submission['target'][i:i+pred_period] = get_prediction(first_prediction, k, pred_period)#get_prediction(f, predictor, pred_period)
 
 submission.to_csv('beat_benchmark_2.csv',index=False)
 print('submission file created')
