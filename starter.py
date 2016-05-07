@@ -69,6 +69,14 @@ def get_prediction(first_prediction, k, prediction_count):
 
     return result
 
+def num_decreases(y):
+    decreases = 0
+    for i in range(1, y):
+        if y.iloc[i] < y.iloc[i - 1]:
+            decreases += 1
+
+    return decreases
+
 
 output_target = pd.read_csv('../data/Output_TargetID_Mapping.csv')
 submission = pd.read_csv('../data/SampleSubmission.csv')
@@ -88,10 +96,12 @@ for i in range(0,output_target.shape[0],pred_period):
 
     k = lr.coef_[0] if lr.coef_[0] <= 0 else np.log(0.91)
     k = np.exp(k)
-    first_prediction = y.iloc[-1]
+
+    decreases = num_decreases(y)
+    first_prediction = y.iloc[-1] if decreases > 3 else np.average(y[-3:])
     print (first_prediction, k)
 
-    submission['target'][i:i+pred_period] = get_prediction(first_prediction, k, pred_period)#get_prediction(f, predictor, pred_period)
+    submission['target'][i:i+pred_period] = get_prediction(first_prediction, k, pred_period)
 
 submission.to_csv('beat_benchmark_2.csv',index=False)
 print('submission file created')
